@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Proof of concept of a scouting and recruitment platform for a football club, on fictional sample data.">
+<title>PC FC Scouting Platform</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+[hidden]{display:none!important}
+img{max-width:100%}
+/* Layout: a dark club band with tab navigation on top, then one working view at a time on a cool neutral ground. */
+:root{
+  --bg:#eef1f6; --surface:#ffffff; --surface-2:#f5f7fb; --ink:#111a2e; --ink-2:#48536a; --ink-3:#727c94; --line:#dce1eb;
+  --brand:#1f45b8; --brand-ink:#ffffff; --brand-soft:#e3e9fb;
+  --band:#0f1b3d; --band-ink:#f3f6ff; --band-ink-2:#aab6d8; --band-line:#2a3a6b; --kit:#f2b705;
+  --good:#17794b; --good-soft:#dcf2e6; --warn:#8a5a08; --warn-soft:#fbeed2; --bad:#b3362f; --bad-soft:#fbe3e1;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow","Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0b101c; --surface:#141b2c; --surface-2:#1a2338; --ink:#eef1f8; --ink-2:#b5bdd0; --ink-3:#8791a9; --line:#28324a;
+  --brand:#8aa8ff; --brand-ink:#0b1020; --brand-soft:#1d2a52;
+  --band:#0f1730; --band-ink:#f3f6ff; --band-ink-2:#aab6d8; --band-line:#2a3a6b; --kit:#f2b705;
+  --good:#5fcf97; --good-soft:#143524; --warn:#e7b454; --warn-soft:#3a2c0e; --bad:#f08a83; --bad-soft:#3d1a18;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0b101c; --surface:#141b2c; --surface-2:#1a2338; --ink:#eef1f8; --ink-2:#b5bdd0; --ink-3:#8791a9; --line:#28324a;
+  --brand:#8aa8ff; --brand-ink:#0b1020; --brand-soft:#1d2a52;
+  --band:#0f1730; --band-ink:#f3f6ff; --band-ink-2:#aab6d8; --band-line:#2a3a6b; --kit:#f2b705;
+  --good:#5fcf97; --good-soft:#143524; --warn:#e7b454; --warn-soft:#3a2c0e; --bad:#f08a83; --bad-soft:#3d1a18;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:30px;line-height:1.1} h2{font-size:20px;line-height:1.15} h3{font-size:16px}
+p{margin:0}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-2)} .faint{color:var(--ink-3)}
+.label{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+
+/* band */
+.band{background:var(--band);color:var(--band-ink)}
+.band-in,.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+.band-top{display:flex;align-items:center;gap:14px;padding-block:14px 10px;flex-wrap:wrap}
+.crest{flex:none}
+.club{font-family:var(--display);font-weight:700;font-size:24px;line-height:1;letter-spacing:.02em;text-transform:uppercase}
+.club small{display:block;font-family:var(--body);font-weight:500;font-size:12px;letter-spacing:.06em;color:var(--band-ink-2);margin-top:4px;text-transform:none}
+.sample{margin-left:auto;font-size:12px;color:var(--band-ink-2);border:1px solid var(--band-line);border-radius:99px;padding:4px 10px}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:0;border-bottom:3px solid transparent;color:var(--band-ink-2);padding:10px 14px;font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.tab:hover{color:var(--band-ink)}
+.tab[aria-current="page"]{color:var(--band-ink);border-bottom-color:var(--kit)}
+.tab:focus-visible{outline-color:var(--kit);outline-offset:-3px}
+
+main.wrap{padding-block:22px 48px;display:flex;flex-direction:column;gap:18px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.head p{color:var(--ink-2);max-width:68ch;margin-top:4px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+.g3{grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,1fr)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.panel-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.panel-h span{font-size:13px;color:var(--ink-3)}
+.scroll{overflow-x:auto}
+
+/* KPI strip: one ruled row, not separate cards */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.kpi{padding:14px 16px;border-left:1px solid var(--line);min-width:0}
+.kpi:first-child{border-left:0}
+.kpi b{display:block;font-family:var(--display);font-weight:600;font-size:34px;line-height:1.05;font-variant-numeric:tabular-nums}
+.kpi span{font-size:13px;color:var(--ink-2)}
+
+/* tables */
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:600;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+th.r,td.r{text-align:right}
+th button{background:none;border:0;padding:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit}
+th button:hover{color:var(--ink)}
+th[aria-sort] button{color:var(--ink)}
+tbody tr.row:hover{background:var(--surface-2)}
+.pname{background:none;border:0;padding:0;text-align:left;font-weight:600;color:var(--ink)}
+.pname:hover{color:var(--brand);text-decoration:underline}
+.sub{display:block;font-size:12.5px;color:var(--ink-3);font-weight:400}
+.pos{display:inline-block;min-width:30px;text-align:center;font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.05em;padding:1px 6px;border:1px solid var(--line);border-radius:3px;color:var(--ink-2);background:var(--surface-2)}
+.score{display:inline-flex;align-items:center;gap:8px}
+.score i{display:block;width:64px;height:6px;border-radius:3px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.score i u{display:block;height:100%;background:var(--brand)}
+.score b{font-variant-numeric:tabular-nums;min-width:2ch;text-align:right}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line);white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good);border-color:transparent}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.pill.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.pill.brand{background:var(--brand-soft);color:var(--brand);border-color:transparent}
+
+/* controls */
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:7px 12px;font-weight:600;font-size:14px;color:var(--ink)}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.sm{padding:3px 8px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:default}
+.link{background:none;border:0;padding:0;color:var(--brand);font-weight:600}
+.link:hover{text-decoration:underline}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.field .label{font-size:12px;font-weight:600;color:var(--ink-2);letter-spacing:0;text-transform:none}
+.field output{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+input[type=text],input[type=search],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;width:100%;min-width:0}
+input[type=range]{width:100%;accent-color:var(--brand);margin:0;height:24px}
+textarea{resize:vertical;min-height:70px}
+details.panel>summary{cursor:pointer;font-family:var(--display);font-weight:600;font-size:18px}
+details.panel[open]>summary{margin-bottom:2px}
+
+/* profile */
+.phead{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.phead h1{font-size:38px;text-transform:uppercase;letter-spacing:.02em}
+.facts{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:8px;color:var(--ink-2);font-size:14px}
+.facts b{color:var(--ink);font-weight:600}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.big{font-family:var(--display);font-weight:600;font-size:64px;line-height:.9;font-variant-numeric:tabular-nums}
+.comp{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:2px 10px;align-items:center;font-size:13.5px}
+.comp .t{grid-column:1/-1;display:flex;justify-content:space-between;color:var(--ink-2)}
+.bar{height:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;position:relative;overflow:hidden}
+.bar u{position:absolute;left:0;top:0;bottom:0;background:var(--brand);border-radius:0 4px 4px 0}
+.bar.mid::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--ink-3);opacity:.6}
+.comp b{text-align:right;font-variant-numeric:tabular-nums}
+.metric{display:grid;grid-template-columns:minmax(0,150px) minmax(60px,1fr) 28px 58px;gap:10px;align-items:center;font-size:14px}
+.metric span:last-child{color:var(--ink-3);text-align:right;font-variant-numeric:tabular-nums;font-size:13px}
+.metric b{text-align:right;font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:10px}
+.report{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+.report:first-child{border-top:0;padding-top:0}
+.report .m{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--ink-3)}
+.report .m b{color:var(--ink);font-size:14px}
+.sim{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
+.sim:first-child{border-top:0;padding-top:0}
+svg text{font-family:var(--body);fill:var(--ink-3);font-size:11px}
+svg{display:block;max-width:100%;height:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.dot{cursor:pointer}
+
+/* pipeline */
+.budget{display:flex;flex-direction:column;gap:6px}
+.budget .bar{height:12px}
+.kan{display:grid;grid-template-columns:repeat(6,minmax(164px,1fr));gap:10px;min-width:0}
+.col{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.col-h{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.03em;text-transform:uppercase}
+.col-h span{font-family:var(--body);font-size:13px;color:var(--ink-3);text-transform:none;letter-spacing:0}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:9px;display:flex;flex-direction:column;gap:6px}
+.kcard .r1{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.kcard .r2{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-2)}
+.kcard .r3{display:flex;gap:4px}
+.kcard .r3 .btn:last-child{margin-left:auto}
+.empty{font-size:13px;color:var(--ink-3);padding:6px 2px}
+.funnel{display:grid;grid-template-columns:minmax(0,140px) minmax(0,1fr) 24px;gap:8px 10px;align-items:center;font-size:14px}
+.funnel .bar{height:14px}
+
+/* network */
+.regions{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border-block:1px solid var(--line);padding-block:8px}
+.kv b{display:block;font-family:var(--display);font-size:24px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.kv span{font-size:12.5px;color:var(--ink-3)}
+.scouts{list-style:none;margin:0;padding:0;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.scouts span{color:var(--ink-3);font-size:12.5px;margin-left:6px}
+.msg{border-top:1px solid var(--line);padding-top:8px;font-size:14px}
+.msg:first-child{border-top:0;padding-top:0}
+.msg .m{font-size:12.5px;color:var(--ink-3);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg .m b{color:var(--ink);font-size:13.5px}
+.row-form{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr) auto;gap:8px;align-items:end}
+.prose{max-width:70ch;display:flex;flex-direction:column;gap:10px;color:var(--ink-2)}
+.prose b{color:var(--ink)}
+td.wrapc{white-space:normal;min-width:220px}
+
+#tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;padding:5px 8px;border-radius:4px;max-width:240px;line-height:1.3}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:var(--r);font-weight:600;font-size:14px;z-index:30}
+footer{color:var(--ink-3);font-size:13px;border-top:1px solid var(--line);padding-top:14px;display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}
+
+@media (max-width:900px){
+  .g2,.g3{grid-template-columns:minmax(0,1fr)}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi:nth-child(3){border-left:0}
+  .kpi:nth-child(n+3){border-top:1px solid var(--line)}
+}
+@media (max-width:560px){
+  .band-in,.wrap{padding-inline:16px}
+  .phead h1{font-size:30px}
+  .metric{grid-template-columns:minmax(0,1fr) 28px 58px}
+  .metric .bar{grid-column:1/-1;grid-row:2}
+  .row-form{grid-template-columns:minmax(0,1fr)}
+  .sample{margin-left:0}
+}
+</style>
+
+</head>
+<body>
+<div class="band">
+  <div class="band-in">
+    <div class="band-top">
+      <svg class="crest" width="40" height="46" viewBox="0 0 40 46" aria-hidden="true">
+        <path d="M2 2h36v24c0 10-8 15-18 18C10 41 2 36 2 26z" fill="#f2b705"/>
+        <path d="M6 6h28v20c0 7.500-6 11.500-14 14-8-2.500-14-6.500-14-14z" fill="#0f1b3d"/>
+        <text x="20" y="27" text-anchor="middle" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:700;font-size:16px;fill:#f2b705">PC</text>
+      </svg>
+      <div class="club">PC Football Club<small>Scouting &amp; recruitment platform · proof of concept</small></div>
+      <div class="sample">Fictional players · sample data</div>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  </div>
+</div>
+<main class="wrap">
+  <div id="view"></div>
+  <footer>
+    <span>Proof of concept for the term project "Developing a Scouting Infrastructure for a Football Team" (R. Kulkarni, EMGT 5220, 2024). All players, clubs, scouts and figures are invented.</span>
+    <button class="link" data-act="reset" id="reset-demo">Reset demo data</button>
+  </footer>
+</main>
+<div id="tip" hidden></div>
+<div id="toast" role="status" hidden></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- helpers ---------- */
+const TODAY = new Date(2026, 9, 5);
+const BUDGET = 45;
+function mulberry(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R = mulberry(20240331);
+const rnd = (a,b)=>a+(b-a)*R();
+const rint = (a,b)=>Math.floor(rnd(a,b+1));
+const pick = arr=>arr[Math.floor(R()*arr.length)];
+const gauss = ()=>(R()+R()+R()+R()+R()+R()-3)/0.7071;
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const avg = a=>a.reduce((s,x)=>s+x,0)/a.length;
+const esc = s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fee = v=>'€'+(v>=10?v.toFixed(0):v.toFixed(1))+'m';
+const fdate = d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const daysAgo = n=>{const d=new Date(TODAY);d.setDate(d.getDate()-n);return d.getTime()};
+
+/* ---------- reference data ---------- */
+const REGIONS = [
+ {id:'sam',name:'South America',hub:'Buenos Aires',nats:['Argentina','Brazil','Colombia'],clubs:['Atlético Paraná Sur','CD Aurora del Plata','Rio Claro FC','Unión del Litoral','Deportivo Cafetal'],scouts:['Hernán Olmedo','Paula Restrepo']},
+ {id:'ibe',name:'Iberia & France',hub:'Lisbon',nats:['Portugal','Spain','France'],clubs:['Sporting Ribeira','CD Costa Verde','Real Albufera','Olympique Garonne','AS Valmont'],scouts:['Inês Carvalho','Julien Morel']},
+ {id:'cee',name:'Central & Eastern Europe',hub:'Vienna',nats:['Croatia','Poland','Czechia'],clubs:['NK Jadran Sol','Wisła Północ','SK Morava','Dinamo Podgora','Lechia Borowa'],scouts:['Zoran Petrak','Agnieszka Nowak']},
+ {id:'nor',name:'Nordics & Low Countries',hub:'Copenhagen',nats:['Denmark','Norway','Netherlands'],clubs:['Østerbro BK','Fjordheim IL','VV Zuiderpark','Nordhavn FF','SC Maasveld'],scouts:['Anders Holm','Femke Janssen']},
+ {id:'waf',name:'West Africa',hub:'Accra',nats:['Ghana','Nigeria','Senegal'],clubs:['Volta Stars','Lagos Mainland FC','ASC Teranga','Kumasi Rovers','Delta Athletic'],scouts:['Kojo Antwi','Aminata Sow']},
+ {id:'eas',name:'East Asia & Oceania',hub:'Osaka',nats:['Japan','South Korea','Australia'],clubs:['Kansai Blue Wave','Hanriver FC','Southern Cross United','Tokai Phoenix','Gyeonggi Citizens'],scouts:['Daichi Morita','Grace Callahan']}
+];
+const NAMES = {
+ Argentina:[['Mateo','Thiago','Joaquín','Lautaro','Franco','Ignacio'],['Ferreyra','Quiroga','Benítez','Ledesma','Villalba','Acuña']],
+ Brazil:[['Caio','Rafael','Murilo','Davi','Heitor','Breno'],['Nogueira','Tavares','Barros','Pacheco','Moreira','Cardoso']],
+ Colombia:[['Santiago','Andrés','Jhon','Yeison','Camilo','Brayan'],['Mosquera','Rentería','Zapata','Cuesta','Palacios','Ibargüen']],
+ Portugal:[['Tiago','Gonçalo','Rodrigo','Afonso','Duarte','Martim'],['Sequeira','Antunes','Barbosa','Figueira','Matos','Varela']],
+ Spain:[['Álvaro','Hugo','Unai','Iker','Marcos','Pau'],['Gallego','Iglesias','Pastor','Lozano','Beltrán','Arroyo']],
+ France:[['Mathis','Enzo','Yanis','Théo','Noah','Killian'],['Lemoine','Marchand','Diarra','Besson','Fofana','Rousseau']],
+ Croatia:[['Luka','Ivan','Marko','Josip','Ante','Filip'],['Barišić','Babić','Jurić','Marić','Perković','Vuković']],
+ Poland:[['Jakub','Kacper','Szymon','Bartosz','Mateusz','Oskar'],['Wójcik','Kamiński','Dąbrowski','Mazur','Jankowski','Pawlak']],
+ Czechia:[['Tomáš','Jakub','Ondřej','Vojtěch','Adam','Matěj'],['Novotný','Dvořák','Procházka','Kučera','Veselý','Horák']],
+ Denmark:[['Magnus','Oliver','Emil','Frederik','Mikkel','Rasmus'],['Kjeldsen','Thomsen','Mortensen','Østergaard','Lund','Bak']],
+ Norway:[['Sander','Jonas','Henrik','Kristoffer','Eirik','Tobias'],['Haugen','Solberg','Bakke','Moen','Lie','Strand']],
+ Netherlands:[['Daan','Sem','Thijs','Lars','Jesse','Ruben'],['Vermeer','de Groot','Smits','Kuipers','van Dam','Hoekstra']],
+ Ghana:[['Kwame','Kofi','Yaw','Ebenezer','Emmanuel','Isaac'],['Mensah','Owusu','Boateng','Asante','Amoah','Adjei']],
+ Nigeria:[['Chinedu','Tunde','Emeka','Ifeanyi','Segun','Uche'],['Okafor','Adeyemi','Eze','Balogun','Nwosu','Olawale']],
+ Senegal:[['Moussa','Ibrahima','Cheikh','Pape','Abdou','Lamine'],['Ndiaye','Diop','Sarr','Faye','Gueye','Cissé']],
+ Japan:[['Haruto','Ren','Sota','Yuto','Kaito','Riku'],['Nakamura','Kobayashi','Yoshida','Matsumoto','Inoue','Kimura']],
+ 'South Korea':[['Min-jun','Ji-ho','Seo-jun','Do-yun','Hyun-woo','Tae-yang'],['Kim','Park','Choi','Jung','Kang','Yoon']],
+ Australia:[['Lachlan','Riley','Cooper','Jayden','Angus','Mitchell'],['Fraser','Whitfield','Dawson','Hartley','Sinclair','Brennan']]
+};
+const POS = {
+ GK:{name:'Goalkeeper',n:12,xy:[60,156],feeF:.6},
+ CB:{name:'Centre-back',n:24,xy:[60,130],feeF:.95},
+ FB:{name:'Full-back',n:20,xy:[22,116],feeF:.85},
+ DM:{name:'Defensive midfielder',n:14,xy:[60,104],feeF:.95},
+ CM:{name:'Central midfielder',n:20,xy:[60,84],feeF:1},
+ AM:{name:'Attacking midfielder',n:14,xy:[60,62],feeF:1.15},
+ W:{name:'Winger',n:20,xy:[98,46],feeF:1.25},
+ ST:{name:'Striker',n:16,xy:[60,28],feeF:1.3}
+};
+const POS_KEYS = Object.keys(POS);
+/* Outfield metrics: mean by position, spread type, model weight by position */
+const OUT = ['CB','FB','DM','CM','AM','W','ST'];
+const METRICS = [
+ {k:'npxg',label:'Non-penalty xG',short:'npxG',unit:'/90',dp:2,mean:[.04,.05,.05,.10,.22,.28,.45],w:[.3,.3,.2,1,2,2.5,4],good:'Gets into high-value shooting positions without needing many touches.',bad:'Rarely threatens the goal himself.'},
+ {k:'xa',label:'Expected assists',short:'xA',unit:'/90',dp:2,mean:[.03,.12,.07,.13,.24,.22,.12],w:[.2,2,.5,1.5,3,2.5,1.5],good:'Final ball is consistently weighted for the runner.',bad:'Final ball let him down in good areas.'},
+ {k:'pp',label:'Progressive passes',short:'Prog. pass',unit:'/90',dp:1,mean:[4.2,4.6,6.0,6.2,5.0,3.2,1.8],w:[2,1.5,2.5,2.5,1.5,.5,.2],good:'Breaks lines with his passing and plays forward early.',bad:'Tends to play safe and sideways.'},
+ {k:'pc',label:'Progressive carries',short:'Prog. carry',unit:'/90',dp:1,mean:[.8,2.6,1.4,2.2,3.0,4.4,1.8],w:[.5,2,1,1.5,1.5,2,.5],good:'Carries the ball through pressure and moves the team up the pitch.',bad:'Reluctant to carry when space opens.'},
+ {k:'drb',label:'Successful dribbles',short:'Dribbles',unit:'/90',dp:1,mean:[.3,1.0,.6,1.0,1.8,2.6,1.2],w:[0,1,.3,.5,1.5,2,1],good:'Beats his man one-on-one from a standing start.',bad:'Struggles to beat a set defender.'},
+ {k:'pass',label:'Pass completion',short:'Pass %',unit:'%',dp:0,pct:5,mean:[88,80,87,85,81,76,72],w:[2,1,2.5,2,1,.5,.5],good:'Rarely gives the ball away, even under a press.',bad:'Loose in possession when pressed.'},
+ {k:'tkl',label:'Tackles + interceptions',short:'Tkl + Int',unit:'/90',dp:1,mean:[3.4,3.8,4.6,3.6,2.0,1.8,.9],w:[3,2.5,3,1.5,.3,.4,.3],good:'Reads play early and wins the ball cleanly.',bad:'Switches off without the ball.'},
+ {k:'aer',label:'Aerial duels won',short:'Aerial %',unit:'%',dp:0,pct:9,mean:[62,48,54,48,40,36,48],w:[3,.7,1,.3,.1,.1,1.5],good:'Dominant in the air in both boxes.',bad:'Loses most aerial duels.'}
+];
+const GK_METRICS = [
+ {k:'save',label:'Save percentage',short:'Save %',unit:'%',dp:0,pct:4,mean:70,w:3,good:'Sets early and makes saves look routine.',bad:'Beaten at his near post once.'},
+ {k:'prev',label:'Goals prevented',short:'Prevented',unit:'/90',dp:2,abs:.14,mean:0,w:3,good:'Kept his side in the game with two saves above expectation.',bad:'Shot-stopping was average on the day.'},
+ {k:'claim',label:'Crosses claimed',short:'Claims %',unit:'%',dp:1,pct:2.5,mean:8,w:1.5,good:'Comes for crosses and takes pressure off the back line.',bad:'Stays on his line under high balls.'},
+ {k:'pass',label:'Pass completion',short:'Pass %',unit:'%',dp:0,pct:7,mean:78,w:1,good:'Comfortable as the spare man in build-up.',bad:'Uneasy with the ball at his feet.'},
+ {k:'long',label:'Long pass accuracy',short:'Long %',unit:'%',dp:0,pct:8,mean:42,w:1,good:'Long distribution finds the wide forwards accurately.',bad:'Long kicks drifted out of play.'},
+ {k:'sweep',label:'Sweeper actions',short:'Sweeper',unit:'/90',dp:1,mean:1.1,w:1,good:'Starts high and clears up balls in behind.',bad:'Slow off his line for through balls.'}
+];
+const metricsFor = p=>p.pos==='GK'?GK_METRICS:METRICS;
+const weightFor = (m,pos)=>pos==='GK'?m.w:m.w[OUT.indexOf(pos)];
+const STAGES = ['Shortlist','Live scouting','Data review','Medical & character','Negotiation','Signed'];
+const SEASONS = ['22/23','23/24','24/25','25/26'];
+const CLOSER = {Sign:'Recommend we move before the winter window.',Monitor:'Worth two more live viewings against stronger opposition.',Pass:'Not at the level we need in this position.'};
+
+/* ---------- generate the database ---------- */
+const scouts = [];
+REGIONS.forEach((r,ri)=>r.scouts.forEach((n,i)=>scouts.push({id:101+ri*2+i,name:n,region:r.id})));
+const players = [];
+(function build(){
+  const used = new Set(); let id = 1001;
+  POS_KEYS.forEach(pos=>{
+    for(let i=0;i<POS[pos].n;i++){
+      const reg = REGIONS[(i+POS_KEYS.indexOf(pos))%REGIONS.length];
+      const nat = pick(reg.nats); let name;
+      do{ name = pick(NAMES[nat][0])+' '+pick(NAMES[nat][1]); }while(used.has(name));
+      used.add(name);
+      const age = 17+Math.floor(Math.pow(R(),1.35)*13);
+      const a = gauss();
+      const m = {};
+      metricsFor({pos}).forEach(d=>{
+        const z = .45*a+.9*gauss();
+        const mean = pos==='GK'?d.mean:d.mean[OUT.indexOf(pos)];
+        let v = d.pct?mean+d.pct*z : d.abs?mean+d.abs*z : mean*(1+.28*z);
+        if(d.unit==='%') v = clamp(v,d.k==='claim'?2:25,97); else if(!d.abs) v = Math.max(v,0);
+        m[d.k] = v;
+      });
+      const expiry = 2027+rint(0,3), yrs = expiry-2026;
+      const ageF = age<=21?1.25:age<=24?1.15:age<=26?1:age<=28?.75:.55;
+      const conF = [0,.6,.85,1,1.1][yrs];
+      const value = clamp(4*Math.exp(.95*a)*ageF*conF*POS[pos].feeF*rnd(.8,1.25),.2,65);
+      const ht = pos==='GK'?rint(188,198):pos==='CB'?rint(184,195):pos==='ST'?rint(178,192):rint(168,186);
+      const f = R();
+      players.push({id:id++,name,pos,age,nat,region:reg.id,club:pick(reg.clubs),foot:f<.7?'Right':f<.94?'Left':'Both',height:ht,expiry,a,m,value:Math.round(value*10)/10,
+        dev:R(),avail:Math.round(clamp(99-Math.pow(R(),1.6)*38,60,99)),char:rint(52,95),adapt:rint(46,95),scoutId:pick(scouts.filter(s=>s.region===reg.id)).id});
+    }
+  });
+  /* percentiles against position peers, then performance / potential / history */
+  POS_KEYS.forEach(pos=>{
+    const grp = players.filter(p=>p.pos===pos), defs = metricsFor({pos});
+    grp.forEach(p=>p.pct={});
+    defs.forEach(d=>{
+      const s = grp.slice().sort((x,y)=>x.m[d.k]-y.m[d.k]);
+      s.forEach((p,i)=>p.pct[d.k]=Math.round(i/(s.length-1)*100));
+    });
+    grp.forEach(p=>{
+      let sw=0,s=0; defs.forEach(d=>{const w=weightFor(d,pos);sw+=w;s+=w*p.pct[d.k]});
+      p.perf = s/sw;
+      const n = Math.min(4,Math.max(1,p.age-16));
+      const g = p.age<=21?3+5*p.dev:p.age<=24?1+3*p.dev:p.age<=27?-.5+2*p.dev:-2+2*p.dev;
+      const h = [p.perf];
+      for(let i=1;i<n;i++) h.unshift(clamp(h[0]-g+rnd(-2.5,2.5),4,99));
+      p.hist = h.map((v,i)=>({season:SEASONS[4-n+i],idx:v,mins:Math.round(clamp((900+2300*R())*(p.avail/100)*(1-.18*(n-1-i)),200,3330)/10)*10}));
+      const slope = n>1?(h[n-1]-h[0])/(n-1):0;
+      p.slope = slope;
+      p.pot = clamp(p.perf+Math.max(0,25-p.age)*(1.4+1.6*p.dev)+slope,p.perf,99);
+      p.fit = (p.avail+p.char+p.adapt)/3;
+    });
+  });
+})();
+const byId = id=>players.find(p=>p.id===+id);
+const scoutById = id=>S.scouts.find(s=>s.id===+id);
+const regionById = id=>REGIONS.find(r=>r.id===id);
+
+function draftReport(p,rating,n){
+  const defs = metricsFor(p).filter(d=>weightFor(d,p.pos)>=.5);
+  const s = defs.slice().sort((x,y)=>p.pct[y.k]-p.pct[x.k]);
+  const rec = rating>=7.5?'Sign':rating>=6?'Monitor':'Pass';
+  return {rec,notes:s[n%2].good+' '+s[s.length-1-(n%2)].bad+' '+CLOSER[rec]};
+}
+const seedReports = [];
+players.forEach(p=>{
+  const n = clamp(Math.round(1.1+.9*p.a+rnd(-.8,.8)),0,3);
+  const reg = regionById(p.region);
+  for(let i=0;i<n;i++){
+    const rating = Math.round(clamp(5.6+1.1*p.a+rnd(-1,1),3,9.5)*2)/2;
+    const d = draftReport(p,rating,i);
+    let opp; do{opp=pick(reg.clubs)}while(opp===p.club);
+    seedReports.push({pid:p.id,scoutId:i?pick(scouts.filter(s=>s.region===p.region)).id:p.scoutId,date:daysAgo(rint(2,150)),fixture:(R()<.5?'home':'away')+' v '+opp,rating,rec:d.rec,notes:d.notes});
+  }
+});
+
+/* ---------- state ---------- */
+const DEFAULT_W = {perf:40,pot:30,scout:15,fit:15};
+const S = {view:'overview',pid:null,weights:Object.assign({},DEFAULT_W),filters:{q:'',pos:'',reg:'',age:29,fee:65,min:0},sort:{k:'eval',d:-1},
+  compare:[],pipeline:{},reports:[],msgs:[],scouts:scouts.slice(),channel:'all'};
+const KEY = 'pcfc-scouting-v1';
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify({weights:S.weights,compare:S.compare,pipeline:S.pipeline,reports:S.reports,msgs:S.msgs,scouts:S.scouts.filter(s=>s.id>=200)})); }catch(e){} }
+function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)||'null'); if(!d) return false;
+  Object.assign(S.weights,d.weights||{}); S.compare=(d.compare||[]).filter(byId); S.pipeline=d.pipeline||{}; S.reports=d.reports||[]; S.msgs=d.msgs||[]; (d.scouts||[]).forEach(s=>S.scouts.push(s)); return true; }catch(e){ return false; } }
+
+const reportsFor = pid=>seedReports.concat(S.reports).filter(r=>r.pid===pid).sort((a,b)=>b.date-a.date);
+const allReports = ()=>seedReports.concat(S.reports).sort((a,b)=>b.date-a.date);
+function scoutScore(p){ const r=reportsFor(p.id); return r.length?avg(r.map(x=>x.rating))*10:null; }
+function recompute(){
+  players.forEach(p=>{
+    const w=S.weights, sc=scoutScore(p); p.scout=sc;
+    let sw=w.perf+w.pot+w.fit, s=w.perf*p.perf+w.pot*p.pot+w.fit*p.fit;
+    if(sc!=null){sw+=w.scout;s+=w.scout*sc}
+    p.eval = sw?s/sw:0;
+  });
+  players.slice().sort((a,b)=>b.eval-a.eval).forEach((p,i)=>p.rank=i+1);
+}
+function seedPipeline(){
+  S.pipeline={};
+  const top = players.filter(p=>p.value<=20).sort((a,b)=>b.eval-a.eval).slice(0,18);
+  const cheap = top.slice().sort((a,b)=>a.value-b.value);
+  const order = cheap.slice(0,3).concat(top.filter(p=>cheap.indexOf(p)>2));
+  [5,4,4,3,3,2,2,2,1,1,1,1,0,0,0,0,0,0].forEach((st,i)=>S.pipeline[order[i].id]=st);
+}
+function seedMsgs(){
+  const best = rid=>players.filter(p=>p.region===rid).sort((a,b)=>b.eval-a.eval);
+  const a=best('sam')[0], b=best('waf')[0], c=best('nor')[1], d=best('ibe')[0];
+  return [
+   {ch:'sam',from:scoutById(a.scoutId).name,date:daysAgo(1),text:'Watched '+a.name+' again on Saturday. Second viewing confirms the first. Report is filed.'},
+   {ch:'all',from:'Head of Data Science',date:daysAgo(2),text:'Model refresh is live with last weekend\'s match data. Rankings in the Players tab are current.'},
+   {ch:'waf',from:scoutById(b.scoutId).name,date:daysAgo(3),text:b.name+' is out of contract in '+b.expiry+'. Two other clubs had people at the ground.'},
+   {ch:'all',from:'Chief of Scouts',date:daysAgo(4),text:'Reminder: every live viewing needs a report within 48 hours so the evaluation stays up to date.'},
+   {ch:'nor',from:'Chief of Scouts',date:daysAgo(6),text:'Medical team has a slot for '+c.name+' next week. Can Copenhagen confirm travel?'},
+   {ch:'ibe',from:scoutById(d.scoutId).name,date:daysAgo(8),text:'Head Coach asked for video on '+d.name+'. Clips from the last three matches are uploaded.'}
+  ];
+}
+let SEED_MSGS = [];
+function verdict(p){ return p.eval>=72?['Priority target','good']:p.eval>=64?['Strong option','brand']:p.eval>=55?['Monitor','warn']:['Below threshold','']; }
+function typicalFee(p){ const peers=players.filter(q=>q!==p&&Math.abs(q.eval-p.eval)<=5).map(q=>q.value).sort((a,b)=>a-b); return peers.length>4?peers[Math.floor(peers.length/2)]:null; }
+function latestRec(p){ const r=reportsFor(p.id)[0]; return r?r.rec:null; }
+const recPill = r=>r?'<span class="pill '+(r==='Sign'?'good':r==='Monitor'?'warn':'bad')+'">'+(r==='Sign'?'▲':r==='Monitor'?'●':'▼')+' '+r+'</span>':'<span class="faint">No report</span>';
+const stagePill = p=>S.pipeline[p.id]!=null?'<span class="pill brand">'+STAGES[S.pipeline[p.id]]+'</span>':'<span class="faint">Database</span>';
+const scoreCell = v=>'<span class="score"><i><u style="width:'+v.toFixed(0)+'%"></u></i><b>'+v.toFixed(0)+'</b></span>';
+const committed = ()=>players.filter(p=>S.pipeline[p.id]>=4).reduce((s,p)=>s+p.value,0);
+
+/* ---------- views ---------- */
+const TABS = [['overview','Overview'],['players','Players'],['compare','Compare'],['pipeline','Pipeline'],['network','Network'],['about','Model & plan']];
+const $view = document.getElementById('view');
+function renderTabs(){
+  const cur = S.view==='player'?'players':S.view;
+  document.getElementById('tabs').innerHTML = TABS.map(t=>'<button class="tab" data-go="'+t[0]+'"'+(cur===t[0]?' aria-current="page"':'')+'>'+t[1]+(t[0]==='compare'&&S.compare.length?' ('+S.compare.length+')':'')+'</button>').join('');
+}
+function go(view,pid){
+  S.view=view; if(pid) S.pid=+pid;
+  try{ history.replaceState(null,'','#'+(view==='player'?'p-'+S.pid:view)); }catch(e){}
+  render(); window.scrollTo(0,0);
+}
+function render(){
+  renderTabs();
+  ({overview:vOverview,players:vPlayers,player:vPlayer,compare:vCompare,pipeline:vPipeline,network:vNetwork,about:vAbout})[S.view]();
+}
+
+function scatter(){
+  const W=560,H=320,l=38,r=14,t=12,b=38;
+  const lo=Math.log(.2),hi=Math.log(70);
+  const ys=players.map(p=>p.eval), y0=Math.floor(Math.min.apply(0,ys)/10)*10, y1=Math.ceil(Math.max.apply(0,ys)/10)*10;
+  const x=v=>l+(Math.log(v)-lo)/(hi-lo)*(W-l-r), y=v=>t+(1-(v-y0)/(y1-y0))*(H-t-b);
+  let g='';
+  for(let v=y0;v<=y1;v+=10) g+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="var(--line)"/><text x="'+(l-6)+'" y="'+(y(v)+4)+'" text-anchor="end">'+v+'</text>';
+  [.5,1,2,5,10,20,50].forEach(v=>g+='<line x1="'+x(v)+'" x2="'+x(v)+'" y1="'+(H-b)+'" y2="'+(H-b+4)+'" stroke="var(--ink-3)"/><text x="'+x(v)+'" y="'+(H-b+16)+'" text-anchor="middle">€'+v+'m</text>');
+  g+='<text x="'+((l+W-r)/2)+'" y="'+(H-4)+'" text-anchor="middle">Estimated fee (log scale)</text>';
+  const dot=(p,inP)=>'<circle class="dot" tabindex="0" role="button" aria-label="'+esc(p.name)+'" data-player="'+p.id+'" data-tip="'+esc(p.name+' · '+p.pos+' · '+p.age+' · rated '+p.eval.toFixed(0)+' · '+fee(p.value))+'" cx="'+x(p.value).toFixed(1)+'" cy="'+y(p.eval).toFixed(1)+'" r="'+(inP?5.5:4)+'" fill="'+(inP?'var(--s2)':'var(--s1)')+'" fill-opacity="'+(inP?1:.55)+'" stroke="var(--surface)" stroke-width="'+(inP?2:1)+'"/>';
+  const rest=players.filter(p=>S.pipeline[p.id]==null), inP=players.filter(p=>S.pipeline[p.id]!=null);
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Evaluation score against estimated fee for all tracked players">'+g+rest.map(p=>dot(p,0)).join('')+inP.map(p=>dot(p,1)).join('')+'</svg>'+
+    '<div class="legend"><span><i style="background:var(--s2)"></i>In pipeline</span><span><i style="background:var(--s1);opacity:.6"></i>Database only</span></div>';
+}
+function vOverview(){
+  const reps=allReports(), last30=reps.filter(r=>r.date>=daysAgo(30)).length, inP=Object.keys(S.pipeline).length, com=committed();
+  const top=players.slice().sort((a,b)=>b.eval-a.eval).slice(0,8);
+  const counts=STAGES.map((s,i)=>players.filter(p=>S.pipeline[p.id]===i).length), mx=Math.max.apply(0,counts.concat([1]));
+  $view.innerHTML =
+  '<div class="stack" style="gap:18px">'+
+  '<div class="head"><div><h1>Recruitment overview</h1><p>Where the scouting department stands on '+TODAY.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+'. Scores combine match data, scout reports and fit checks.</p></div></div>'+
+  '<div class="kpis">'+
+   '<div class="kpi"><b>'+players.length+'</b><span>players tracked in '+REGIONS.length+' regions</span></div>'+
+   '<div class="kpi"><b>'+reps.length+'</b><span>scout reports, '+last30+' in the last 30 days</span></div>'+
+   '<div class="kpi"><b>'+inP+'</b><span>players in the recruitment pipeline</span></div>'+
+   '<div class="kpi"><b>'+fee(com)+'</b><span>committed of the '+fee(BUDGET)+' transfer budget</span></div>'+
+  '</div>'+
+  '<div class="grid g2">'+
+   '<div class="panel"><div class="panel-h"><h2>Highest-rated targets</h2><button class="link" data-go="players">All players</button></div><div class="scroll"><table><thead><tr><th>Player</th><th>Pos</th><th class="r">Age</th><th>Evaluation</th><th class="r">Est. fee</th><th>Stage</th></tr></thead><tbody>'+
+    top.map(p=>'<tr class="row"><td><button class="pname" data-player="'+p.id+'">'+esc(p.name)+'<span class="sub">'+esc(p.club)+'</span></button></td><td><span class="pos">'+p.pos+'</span></td><td class="r num">'+p.age+'</td><td>'+scoreCell(p.eval)+'</td><td class="r num">'+fee(p.value)+'</td><td>'+stagePill(p)+'</td></tr>').join('')+
+   '</tbody></table></div></div>'+
+   '<div class="panel"><div class="panel-h"><h2>Rating against price</h2><span>Top-left is the best value</span></div>'+scatter()+'</div>'+
+  '</div>'+
+  '<div class="grid g2">'+
+   '<div class="panel"><div class="panel-h"><h2>Pipeline by stage</h2><button class="link" data-go="pipeline">Open pipeline</button></div><div class="funnel">'+
+    STAGES.map((s,i)=>'<span>'+s+'</span><div class="bar"><u style="width:'+(counts[i]/mx*100)+'%"></u></div><b class="num">'+counts[i]+'</b>').join('')+
+   '</div></div>'+
+   '<div class="panel"><div class="panel-h"><h2>Latest scout reports</h2><button class="link" data-go="network">Scouting network</button></div><div class="stack">'+
+    reps.slice(0,4).map(r=>{const p=byId(r.pid),s=scoutById(r.scoutId);return '<div class="report"><div class="m"><button class="pname" data-player="'+p.id+'">'+esc(p.name)+'</button><span class="pos">'+p.pos+'</span>'+recPill(r.rec)+'<span class="num">'+r.rating.toFixed(1)+' / 10</span></div><div class="m">'+esc(s?s.name:'Scout')+' · '+fdate(r.date)+' · '+esc(r.fixture)+'</div></div>'}).join('')+
+   '</div></div>'+
+  '</div></div>';
+}
+
+function weightsPanel(){
+  const names={perf:'Current performance',pot:'Potential',scout:'Scout rating',fit:'Fit (medical, character, adaptation)'};
+  const tot=Object.values(S.weights).reduce((a,b)=>a+b,0)||1;
+  return '<details class="panel" id="weights"><summary>Evaluation weights</summary><p class="muted" style="max-width:70ch">Set how much each input counts toward the evaluation score. Rankings update as you move a slider. Players with no scout report are scored on the other three inputs.</p><div class="filters">'+
+   Object.keys(names).map(k=>'<div class="field"><label for="w-'+k+'">'+names[k]+' <output id="wo-'+k+'">'+Math.round(S.weights[k]/tot*100)+'%</output></label><input type="range" id="w-'+k+'" data-w="'+k+'" min="0" max="100" step="5" value="'+S.weights[k]+'"></div>').join('')+
+   '<div class="field"><button class="btn" data-act="w-reset" id="w-reset">Restore defaults</button></div></div></details>';
+}
+function vPlayers(){
+  const f=S.filters;
+  $view.innerHTML = '<div class="stack" style="gap:18px">'+
+  '<div class="head"><div><h1>Player database</h1><p>Every tracked player with the model\'s evaluation. Percentiles are measured against players in the same position.</p></div></div>'+
+  '<div class="panel"><div class="filters">'+
+   '<div class="field"><label for="f-q">Search</label><input type="search" id="f-q" data-f="q" placeholder="Name, club or country" value="'+esc(f.q)+'"></div>'+
+   '<div class="field"><label for="f-pos">Position</label><select id="f-pos" data-f="pos"><option value="">All positions</option>'+POS_KEYS.map(k=>'<option value="'+k+'"'+(f.pos===k?' selected':'')+'>'+POS[k].name+'</option>').join('')+'</select></div>'+
+   '<div class="field"><label for="f-reg">Region</label><select id="f-reg" data-f="reg"><option value="">All regions</option>'+REGIONS.map(r=>'<option value="'+r.id+'"'+(f.reg===r.id?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select></div>'+
+   '<div class="field"><label for="f-age">Max age <output id="fo-age">'+f.age+'</output></label><input type="range" id="f-age" data-f="age" min="17" max="29" value="'+f.age+'"></div>'+
+   '<div class="field"><label for="f-fee">Max fee <output id="fo-fee">'+fee(+f.fee)+'</output></label><input type="range" id="f-fee" data-f="fee" min="1" max="65" value="'+f.fee+'"></div>'+
+   '<div class="field"><label for="f-min">Min evaluation <output id="fo-min">'+f.min+'</output></label><input type="range" id="f-min" data-f="min" min="0" max="80" step="5" value="'+f.min+'"></div>'+
+  '</div></div>'+weightsPanel()+
+  '<div class="panel" id="ptable"></div></div>';
+  renderTable();
+}
+const COLS=[['rank','#',1],['name','Player',0],['pos','Pos',0],['age','Age',1],['nat','Country',0],['eval','Evaluation',0],['perf','Perf.',1],['pot','Potential',1],['value','Est. fee',1]];
+function renderTable(){
+  const f=S.filters, q=f.q.trim().toLowerCase();
+  let rows=players.filter(p=>(!q||(p.name+' '+p.club+' '+p.nat).toLowerCase().indexOf(q)>=0)&&(!f.pos||p.pos===f.pos)&&(!f.reg||p.region===f.reg)&&p.age<=+f.age&&p.value<=+f.fee&&p.eval>=+f.min);
+  const k=S.sort.k,d=S.sort.d;
+  rows.sort((a,b)=>(typeof a[k]==='string'?a[k].localeCompare(b[k]):a[k]-b[k])*d);
+  const el=document.getElementById('ptable'); if(!el) return;
+  el.innerHTML='<div class="panel-h"><h2>'+rows.length+' of '+players.length+' players</h2><span>Select a name to open the profile</span></div>'+
+  (rows.length?'<div class="scroll"><table><thead><tr>'+COLS.map(c=>'<th'+(c[2]?' class="r"':'')+(k===c[0]?' aria-sort="'+(d>0?'ascending':'descending')+'"':'')+'><button data-sort="'+c[0]+'">'+c[1]+(k===c[0]?(d>0?' ↑':' ↓'):'')+'</button></th>').join('')+'<th>Scout view</th><th>Stage</th><th>Compare</th></tr></thead><tbody>'+
+   rows.map(p=>'<tr class="row"><td class="r num faint">'+p.rank+'</td><td><button class="pname" data-player="'+p.id+'">'+esc(p.name)+'<span class="sub">'+esc(p.club)+'</span></button></td><td><span class="pos">'+p.pos+'</span></td><td class="r num">'+p.age+'</td><td>'+esc(p.nat)+'</td><td>'+scoreCell(p.eval)+'</td><td class="r num">'+p.perf.toFixed(0)+'</td><td class="r num">'+p.pot.toFixed(0)+'</td><td class="r num">'+fee(p.value)+'</td><td>'+recPill(latestRec(p))+'</td><td>'+stagePill(p)+'</td><td><button class="btn sm" data-act="cmp" data-id="'+p.id+'" aria-pressed="'+(S.compare.indexOf(p.id)>=0)+'">'+(S.compare.indexOf(p.id)>=0?'✓ Added':'Add')+'</button></td></tr>').join('')+
+  '</tbody></table></div>':'<p class="muted">No players match these filters. Widen the age, fee or evaluation range.</p>');
+}
+
+function pitch(p){
+  const xy=POS[p.pos].xy;
+  return '<svg viewBox="0 0 120 170" width="120" height="170" role="img" aria-label="Position on pitch: '+POS[p.pos].name+'"><g fill="none" stroke="var(--ink-3)" stroke-width="1" opacity=".7"><rect x="4" y="4" width="112" height="162" rx="2"/><line x1="4" y1="85" x2="116" y2="85"/><circle cx="60" cy="85" r="14"/><rect x="32" y="4" width="56" height="24"/><rect x="32" y="142" width="56" height="24"/><rect x="46" y="4" width="28" height="9"/><rect x="46" y="157" width="28" height="9"/></g>'+
+   (p.pos==='FB'||p.pos==='W'?'<circle cx="'+(120-xy[0])+'" cy="'+xy[1]+'" r="6" fill="none" stroke="var(--brand)" stroke-width="1.5" stroke-dasharray="2 2"/>':'')+
+   '<circle cx="'+xy[0]+'" cy="'+xy[1]+'" r="7" fill="var(--brand)" stroke="var(--surface)" stroke-width="2"/></svg>';
+}
+function histChart(p){
+  const W=420,H=170,l=30,r=34,t=14,b=26,h=p.hist;
+  if(h.length<2) return '<p class="muted">First senior season. A trend appears after a second season of data.</p>';
+  const lo=Math.max(0,Math.floor((Math.min.apply(0,h.map(x=>x.idx))-8)/10)*10), hi=Math.min(100,Math.ceil((Math.max.apply(0,h.map(x=>x.idx))+8)/10)*10);
+  const x=i=>l+i/(h.length-1)*(W-l-r), y=v=>t+(1-(v-lo)/(hi-lo))*(H-t-b);
+  let g=''; for(let v=lo;v<=hi;v+=10) g+='<line x1="'+l+'" x2="'+(W-r)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="var(--line)"/><text x="'+(l-6)+'" y="'+(y(v)+4)+'" text-anchor="end">'+v+'</text>';
+  const pts=h.map((d,i)=>x(i).toFixed(1)+','+y(d.idx).toFixed(1));
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Performance index by season">'+g+
+   '<polyline points="'+pts.join(' ')+'" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>'+
+   h.map((d,i)=>'<text x="'+x(i)+'" y="'+(H-6)+'" text-anchor="middle">'+d.season+'</text><circle cx="'+x(i)+'" cy="'+y(d.idx)+'" r="'+(i===h.length-1?5:4)+'" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/><circle cx="'+x(i)+'" cy="'+y(d.idx)+'" r="14" fill="transparent" data-tip="'+d.season+' · index '+d.idx.toFixed(0)+' · '+d.mins.toLocaleString('en-GB')+' minutes"/>').join('')+
+   '<text x="'+(x(h.length-1)+9)+'" y="'+(y(h[h.length-1].idx)+4)+'" style="fill:var(--ink);font-weight:600;font-size:12px">'+h[h.length-1].idx.toFixed(0)+'</text></svg>';
+}
+function vPlayer(){
+  const p=byId(S.pid); if(!p){ go('players'); return; }
+  const v=verdict(p), reps=reportsFor(p.id), st=S.pipeline[p.id], sc=scoutById(p.scoutId), reg=regionById(p.region);
+  const tf=typicalFee(p), diff=tf!=null?p.value-tf:null;
+  const w=S.weights, used=w.perf+w.pot+w.fit+(p.scout!=null?w.scout:0)||1;
+  const comp=(label,val,wk)=>'<div class="t"><span>'+label+'</span><span class="faint">'+(val==null?'not counted':Math.round(w[wk]/used*100)+'% of score')+'</span></div><div class="bar"><u style="width:'+(val||0)+'%"></u></div><b>'+(val==null?'–':val.toFixed(0))+'</b>';
+  const sims=players.filter(q=>q.pos===p.pos&&q!==p).map(q=>({q,d:Math.sqrt(avg(metricsFor(p).map(m=>Math.pow(p.pct[m.k]-q.pct[m.k],2))))})).sort((a,b)=>a.d-b.d).slice(0,4);
+  const inCmp=S.compare.indexOf(p.id)>=0;
+  $view.innerHTML = '<div class="stack" style="gap:18px">'+
+  '<div><button class="link" data-go="players">← Player database</button></div>'+
+  '<div class="phead"><div><div class="label">Player '+p.id+' · ranked '+p.rank+' of '+players.length+'</div><h1>'+esc(p.name)+'</h1>'+
+   '<div class="facts"><span><span class="pos">'+p.pos+'</span> '+POS[p.pos].name+'</span><span><b>'+p.age+'</b> years</span><span><b>'+esc(p.nat)+'</b></span><span>'+esc(p.club)+'</span><span><b>'+p.height+'</b> cm</span><span><b>'+p.foot+'</b> foot</span><span>Contract to <b>'+p.expiry+'</b></span><span>Est. fee <b>'+fee(p.value)+'</b></span></div></div>'+
+   '<div class="actions">'+(st==null?'<button class="btn primary" data-act="pipe-add" data-id="'+p.id+'">Add to shortlist</button>':'<span class="pill brand" style="align-self:center">'+STAGES[st]+'</span>'+(st<5?'<button class="btn primary" data-act="pipe-fwd" data-id="'+p.id+'">Move to '+STAGES[st+1]+'</button>':''))+
+   '<button class="btn" data-act="cmp" data-id="'+p.id+'">'+(inCmp?'✓ In comparison':'Add to comparison')+'</button></div></div>'+
+  '<div class="grid g3">'+
+   '<div class="panel"><div class="panel-h"><h2>Evaluation</h2><span class="pill '+v[1]+'">'+v[0]+'</span></div>'+
+    '<div style="display:flex;gap:14px;align-items:flex-end;justify-content:space-between"><div><div class="big">'+p.eval.toFixed(0)+'</div><div class="faint" style="font-size:13px">out of 100</div></div>'+pitch(p)+'</div>'+
+    '<div class="comp">'+comp('Current performance',p.perf,'perf')+comp('Potential',p.pot,'pot')+comp('Scout rating',p.scout,'scout')+comp('Fit',p.fit,'fit')+'</div>'+
+    (diff!=null?'<p class="muted" style="font-size:14px">'+(Math.abs(diff)<.3?'Priced in line with similarly rated players.':'Estimated fee is <b style="color:var(--'+(diff<0?'good':'bad')+')">'+fee(Math.abs(diff))+' '+(diff<0?'below':'above')+'</b> the typical fee of '+fee(tf)+' for players rated within five points.')+'</p>':'')+
+   '</div>'+
+   '<div class="panel"><div class="panel-h"><h2>Performance metrics</h2><span>Percentile among '+players.filter(q=>q.pos===p.pos).length+' '+POS[p.pos].name.toLowerCase()+'s · 2025/26</span></div><div class="stack">'+
+    metricsFor(p).map(m=>'<div class="metric"><span>'+m.label+'</span><div class="bar mid" data-tip="'+m.label+': '+p.m[m.k].toFixed(m.dp)+(m.unit==='%'?'%':' per 90')+', better than '+p.pct[m.k]+'% of peers"><u style="width:'+p.pct[m.k]+'%"></u></div><b>'+p.pct[m.k]+'</b><span>'+p.m[m.k].toFixed(m.dp)+(m.unit==='%'?'%':'')+'</span></div>').join('')+
+   '</div><p class="faint" style="font-size:13px">Bar and bold figure show the percentile. The grey figure is the raw value, per 90 minutes unless shown as a percentage. The line marks the position median.</p></div>'+
+   '<div class="panel"><div class="panel-h"><h2>Season history</h2><span>Performance index</span></div>'+histChart(p)+
+    '<div class="scroll"><table><thead><tr><th>Season</th><th class="r">Minutes</th><th class="r">Index</th></tr></thead><tbody>'+p.hist.map(h=>'<tr><td>'+h.season+'</td><td class="r num">'+h.mins.toLocaleString('en-GB')+'</td><td class="r num">'+h.idx.toFixed(0)+'</td></tr>').join('')+'</tbody></table></div>'+
+    '<h3 style="margin-top:4px">Fit checks</h3><div class="comp">'+
+     [['Availability (medical)',p.avail],['Character profile',p.char],['Cultural adaptation',p.adapt]].map(x=>'<div class="t"><span>'+x[0]+'</span></div><div class="bar"><u style="width:'+x[1]+'%"></u></div><b>'+x[1]+'</b>').join('')+'</div></div>'+
+  '</div>'+
+  '<div class="grid g2">'+
+   '<div class="panel"><div class="panel-h"><h2>Scout reports</h2><span>Lead scout: '+esc(sc?sc.name:'Unassigned')+', '+esc(reg.name)+'</span></div><div class="stack">'+
+    (reps.length?reps.map(r=>{const s=scoutById(r.scoutId);return '<div class="report"><div class="m"><b>'+esc(s?s.name:'Scout')+'</b>'+recPill(r.rec)+'<span class="num">'+r.rating.toFixed(1)+' / 10</span><span>'+fdate(r.date)+' · '+esc(r.fixture)+'</span></div><p>'+esc(r.notes)+'</p></div>'}).join(''):'<p class="muted">No live viewing yet. The evaluation uses data and fit checks only until a scout files a report.</p>')+
+   '</div></div>'+
+   '<div class="stack" style="gap:16px">'+
+   '<form class="panel" id="report-form"><div class="panel-h"><h2>File a scout report</h2><span>Updates the evaluation at once</span></div>'+
+    '<div class="filters"><div class="field"><label for="r-scout">Scout</label><select id="r-scout">'+S.scouts.map(s=>'<option value="'+s.id+'"'+(s.id===p.scoutId?' selected':'')+'>'+esc(s.name)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label for="r-fix">Match watched</label><input type="text" id="r-fix" placeholder="e.g. home v '+esc(reg.clubs[0])+'"></div>'+
+    '<div class="field"><label for="r-rating">Rating <output id="ro-rating">7.0</output> / 10</label><input type="range" id="r-rating" min="1" max="10" step="0.5" value="7"></div>'+
+    '<div class="field"><label for="r-rec">Recommendation</label><select id="r-rec"><option>Sign</option><option selected>Monitor</option><option>Pass</option></select></div></div>'+
+    '<div class="field"><label for="r-notes">Notes</label><textarea id="r-notes" placeholder="What you saw: strengths, concerns, next step"></textarea></div>'+
+    '<div><button class="btn primary" type="submit">File report</button></div></form>'+
+   '<div class="panel"><div class="panel-h"><h2>Similar players</h2><span>Closest statistical profiles at '+p.pos+'</span></div><div class="stack">'+
+    sims.map(s=>'<div class="sim"><button class="pname" data-player="'+s.q.id+'">'+esc(s.q.name)+'<span class="sub">'+s.q.age+' · '+esc(s.q.club)+'</span></button><span class="muted num" style="font-size:13.5px;text-align:right">rated '+s.q.eval.toFixed(0)+' · '+fee(s.q.value)+'</span></div>').join('')+
+   '</div></div></div>'+
+  '</div></div>';
+}
+
+function radar(ps){
+  const defs=metricsFor(ps[0]), n=defs.length, C=['var(--s1)','var(--s2)','var(--s3)'], cx=210,cy=165,rad=110;
+  const pt=(i,v)=>{const a=-Math.PI/2+i/n*2*Math.PI;return [cx+Math.cos(a)*rad*v/100,cy+Math.sin(a)*rad*v/100]};
+  let g='';
+  [25,50,75,100].forEach(v=>g+='<polygon points="'+defs.map((d,i)=>pt(i,v).map(x=>x.toFixed(1)).join(',')).join(' ')+'" fill="none" stroke="var(--line)"/>');
+  defs.forEach((d,i)=>{const e=pt(i,100),t=pt(i,118);g+='<line x1="'+cx+'" y1="'+cy+'" x2="'+e[0]+'" y2="'+e[1]+'" stroke="var(--line)"/><text x="'+t[0]+'" y="'+(t[1]+4)+'" text-anchor="'+(Math.abs(t[0]-cx)<8?'middle':t[0]>cx?'start':'end')+'">'+d.short+'</text>'});
+  ps.forEach(p=>{const c=C[S.compare.indexOf(p.id)];g+='<polygon points="'+defs.map((d,i)=>pt(i,p.pct[d.k]).map(x=>x.toFixed(1)).join(',')).join(' ')+'" fill="'+c+'" fill-opacity=".12" stroke="'+c+'" stroke-width="2" stroke-linejoin="round"/>'+
+    defs.map((d,i)=>{const q=pt(i,p.pct[d.k]);return '<circle cx="'+q[0].toFixed(1)+'" cy="'+q[1].toFixed(1)+'" r="4" fill="'+c+'" stroke="var(--surface)" stroke-width="2" data-tip="'+esc(p.name)+' · '+d.label+': '+p.pct[d.k]+'th percentile"/>'}).join('')});
+  return '<svg viewBox="0 0 420 330" role="img" aria-label="Percentile profile comparison">'+g+'</svg>';
+}
+function vCompare(){
+  const ps=S.compare.map(byId).filter(Boolean), C=['var(--s1)','var(--s2)','var(--s3)'];
+  const opts='<option value="">Add a player…</option>'+players.slice().sort((a,b)=>a.name.localeCompare(b.name)).filter(p=>S.compare.indexOf(p.id)<0).map(p=>'<option value="'+p.id+'">'+esc(p.name)+' ('+p.pos+', '+p.age+')</option>').join('');
+  const sameGroup=ps.length&&ps.every(p=>(p.pos==='GK')===(ps[0].pos==='GK'));
+  const row=(label,fn,best)=>{const vals=ps.map(fn);const b=best?(best>0?Math.max.apply(0,vals.map(v=>v[0])):Math.min.apply(0,vals.map(v=>v[0]))):null;return '<tr><td>'+label+'</td>'+vals.map(v=>'<td class="r num"'+(b!=null&&ps.length>1&&v[0]===b?' style="font-weight:600;color:var(--ink)"':' style="color:var(--ink-2)"')+'>'+v[1]+(b!=null&&ps.length>1&&v[0]===b?' ●':'')+'</td>').join('')+'</tr>'};
+  $view.innerHTML = '<div class="stack" style="gap:18px">'+
+  '<div class="head"><div><h1>Compare players</h1><p>Put up to three players side by side. The chart uses percentiles against each player\'s own position, so it reads best for players in the same role.</p></div></div>'+
+  '<div class="panel"><div class="filters" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">'+
+   ps.map((p,i)=>'<div class="field"><span class="label"><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+C[i]+';margin-right:6px"></i>Player '+(i+1)+'</span><div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><button class="pname" data-player="'+p.id+'">'+esc(p.name)+'<span class="sub">'+p.pos+' · '+p.age+' · '+esc(p.club)+'</span></button><button class="btn sm" data-act="cmp" data-id="'+p.id+'" aria-label="Remove '+esc(p.name)+'">Remove</button></div></div>').join('')+
+   (ps.length<3?'<div class="field"><label for="cmp-add">'+(ps.length?'Add another':'Choose a player')+'</label><select id="cmp-add">'+opts+'</select></div>':'')+
+  '</div></div>'+
+  (ps.length?'<div class="grid g2"><div class="panel"><div class="panel-h"><h2>Percentile profile</h2><span>2025/26, against position peers</span></div>'+
+    (sameGroup?radar(ps)+'<div class="legend">'+ps.map((p,i)=>'<span><i style="background:'+C[i]+'"></i>'+esc(p.name)+'</span>').join('')+'</div>':'<p class="muted">Goalkeepers are measured on different metrics from outfield players, so they cannot share a chart. Remove one to see the profile.</p>')+'</div>'+
+   '<div class="panel"><div class="panel-h"><h2>Side by side</h2><span>● marks the best value in each row</span></div><div class="scroll"><table><thead><tr><th></th>'+ps.map(p=>'<th class="r">'+esc(p.name.split(' ').slice(-1)[0])+'</th>').join('')+'</tr></thead><tbody>'+
+    row('Evaluation',p=>[Math.round(p.eval),p.eval.toFixed(0)],1)+row('Current performance',p=>[Math.round(p.perf),p.perf.toFixed(0)],1)+row('Potential',p=>[Math.round(p.pot),p.pot.toFixed(0)],1)+row('Scout rating',p=>[p.scout==null?-1:Math.round(p.scout),p.scout==null?'–':p.scout.toFixed(0)],1)+row('Fit',p=>[Math.round(p.fit),p.fit.toFixed(0)],1)+
+    row('Age',p=>[p.age,p.age],0)+row('Estimated fee',p=>[p.value,fee(p.value)],-1)+row('Contract to',p=>[p.expiry,p.expiry],0)+
+    (sameGroup?metricsFor(ps[0]).map(m=>row(m.label+(m.unit==='%'?'':' /90'),p=>[+p.m[m.k].toFixed(m.dp),p.m[m.k].toFixed(m.dp)+(m.unit==='%'?'%':'')],1)).join(''):'')+
+   '</tbody></table></div></div></div>':'<div class="panel"><p class="muted">No players selected yet. Choose one above, or use the Add button in the player database.</p></div>')+
+  '</div>';
+}
+
+function vPipeline(){
+  const com=committed(), all=players.filter(p=>S.pipeline[p.id]!=null).reduce((s,p)=>s+p.value,0);
+  $view.innerHTML = '<div class="stack" style="gap:18px">'+
+  '<div class="head"><div><h1>Recruitment pipeline</h1><p>Each target moves from shortlist to signature. Scouting, data science and the medical department each own a stage.</p></div></div>'+
+  '<div class="panel budget"><div class="panel-h"><h2>Transfer budget</h2><span class="num">'+fee(com)+' committed of '+fee(BUDGET)+' · '+fee(Math.max(0,BUDGET-com))+' left</span></div>'+
+   '<div class="bar"><u style="width:'+Math.min(100,com/BUDGET*100)+'%;background:var(--'+(com>BUDGET?'bad':'brand')+')"></u></div>'+
+   '<p class="muted" style="font-size:14px">'+(com>BUDGET?'<b style="color:var(--bad)">Over budget by '+fee(com-BUDGET)+'.</b> ':'')+'Committed counts players in Negotiation or Signed. Everyone in the pipeline together would cost '+fee(all)+'.</p></div>'+
+  '<div class="scroll"><div class="kan">'+STAGES.map((s,i)=>{const ps=players.filter(p=>S.pipeline[p.id]===i).sort((a,b)=>b.eval-a.eval);return '<div class="col"><div class="col-h">'+s+'<span>'+ps.length+'</span></div>'+
+    (ps.length?ps.map(p=>'<div class="kcard"><div class="r1"><button class="pname" data-player="'+p.id+'">'+esc(p.name)+'</button><span class="pos">'+p.pos+'</span></div><div class="r2"><span>'+p.age+' · rated <b style="color:var(--ink)">'+p.eval.toFixed(0)+'</b></span><span class="num">'+fee(p.value)+'</span></div><div class="r3"><button class="btn sm" data-act="pipe-back" data-id="'+p.id+'"'+(i===0?' disabled':'')+' aria-label="Move '+esc(p.name)+' back a stage">←</button><button class="btn sm" data-act="pipe-fwd" data-id="'+p.id+'"'+(i===5?' disabled':'')+' aria-label="Move '+esc(p.name)+' forward a stage">→</button><button class="btn sm" data-act="pipe-del" data-id="'+p.id+'">Drop</button></div></div>').join(''):'<div class="empty">No players at this stage.</div>')+'</div>'}).join('')+'</div></div>'+
+  '</div>';
+}
+
+function vNetwork(){
+  const msgs=SEED_MSGS.concat(S.msgs).filter(m=>S.channel==='all'||m.ch===S.channel).sort((a,b)=>b.date-a.date);
+  const reps=allReports();
+  $view.innerHTML = '<div class="stack" style="gap:18px">'+
+  '<div class="head"><div><h1>Scouting network</h1><p>Regional scouts feed one shared database. Each region has a hub, named scouts and a channel to the club.</p></div></div>'+
+  '<div class="regions">'+REGIONS.map(r=>{const ps=players.filter(p=>p.region===r.id).sort((a,b)=>b.eval-a.eval), sc=S.scouts.filter(s=>s.region===r.id), ids=ps.map(p=>p.id), n=reps.filter(x=>ids.indexOf(x.pid)>=0).length;
+    return '<div class="panel"><div class="panel-h"><h2>'+esc(r.name)+'</h2><span>Hub: '+r.hub+'</span></div><div class="kv"><div><b>'+ps.length+'</b><span>players</span></div><div><b>'+n+'</b><span>reports</span></div><div><b>'+avg(ps.map(p=>p.eval)).toFixed(0)+'</b><span>avg. rating</span></div></div>'+
+    '<ul class="scouts">'+sc.map(s=>'<li>'+esc(s.name)+'<span>Scout '+s.id+'</span></li>').join('')+'</ul>'+
+    '<div style="font-size:14px"><span class="muted">Top prospect: </span><button class="link" data-player="'+ps[0].id+'">'+esc(ps[0].name)+'</button> <span class="muted">('+ps[0].pos+', '+ps[0].age+', rated '+ps[0].eval.toFixed(0)+')</span></div></div>'}).join('')+'</div>'+
+  '<div class="grid g2">'+
+   '<div class="panel"><div class="panel-h"><h2>Scout channel</h2><div class="field" style="min-width:190px"><select id="ch-sel" aria-label="Channel"><option value="all">All regions</option>'+REGIONS.map(r=>'<option value="'+r.id+'"'+(S.channel===r.id?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select></div></div>'+
+    '<form class="row-form" id="msg-form"><div class="field"><label for="m-from">From</label><select id="m-from"><option>Director of Football</option><option>Chief of Scouts</option><option>Head of Data Science</option>'+S.scouts.filter(s=>S.channel==='all'||s.region===S.channel).map(s=>'<option>'+esc(s.name)+'</option>').join('')+'</select></div><div class="field"><label for="m-text">Message</label><input type="text" id="m-text" placeholder="Share an update with '+(S.channel==='all'?'the network':esc(regionById(S.channel).name))+'"></div><button class="btn primary" type="submit">Post</button></form>'+
+    '<div class="stack">'+(msgs.length?msgs.map(m=>'<div class="msg"><div class="m"><b>'+esc(m.from)+'</b><span>'+fdate(m.date)+'</span><span class="pill">'+(m.ch==='all'?'All regions':esc(regionById(m.ch).name))+'</span></div><p>'+esc(m.text)+'</p></div>').join(''):'<p class="muted">No messages in this channel yet.</p>')+'</div></div>'+
+   '<form class="panel" id="scout-form" style="align-self:start"><div class="panel-h"><h2>Add a scout</h2><span>Extends coverage in a region</span></div>'+
+    '<div class="field"><label for="s-name">Name</label><input type="text" id="s-name" placeholder="Full name"></div>'+
+    '<div class="field"><label for="s-reg">Region</label><select id="s-reg">'+REGIONS.map(r=>'<option value="'+r.id+'">'+esc(r.name)+'</option>').join('')+'</select></div>'+
+    '<div><button class="btn primary" type="submit">Add scout</button></div>'+
+    '<p class="faint" style="font-size:13px">New scouts appear in the region card and can file reports from any player profile.</p></form>'+
+  '</div></div>';
+}
+
+function vAbout(){
+  const rows=[
+   ['2.0 Data acquisition and management','Player database with '+players.length+' profiles, 2025/26 metrics and up to four seasons of history.','The data is generated inside the page. No live feeds or APIs.'],
+   ['3.0 Player evaluation and modelling','Evaluation score from position-weighted percentiles, an age and trend projection, scout ratings and fit checks. Weights are adjustable.','A transparent scoring formula stands in for trained machine-learning models.'],
+   ['4.0 Technology and infrastructure','Dashboards, player profiles, comparison charts and search in one web page.','No servers, logins or user roles.'],
+   ['5.1 Scouting workflow and roles','Six-stage recruitment pipeline, scout report form and regional scout assignments.','Stage ownership is described but not enforced.'],
+   ['5.2 Models and data in decisions','Scores update when a report is filed. Each profile compares the fee with similarly rated players. Budget tracking in the pipeline.','Fees are estimates from the generator.'],
+   ['Global scouting network','Six regional hubs, named scouts, a channel per region and a form to add scouts.','Messages and changes are saved in this browser only and are not shared between viewers.']
+  ];
+  $view.innerHTML = '<div class="stack" style="gap:18px">'+
+  '<div class="head"><div><h1>Model and project plan</h1><p>How the evaluation score is built, and how this proof of concept maps to the work breakdown structure in the project report.</p></div></div>'+
+  '<div class="grid g2"><div class="panel"><h2>How a player is scored</h2><div class="prose">'+
+   '<p><b>Current performance.</b> Each 2025/26 metric is converted to a percentile among players in the same position. The percentiles are averaged with weights that reflect the role: aerial duels and tackles count most for a centre-back, non-penalty xG for a striker.</p>'+
+   '<p><b>Potential.</b> Performance plus an allowance for each year under 25, scaled by the player\'s development rate, plus the average yearly change in his season history. It never falls below current performance.</p>'+
+   '<p><b>Scout rating.</b> The mean of all scout report ratings, scaled to 100. Players without a report are scored on the other inputs.</p>'+
+   '<p><b>Fit.</b> The mean of availability from medical records, a character profile and a cultural adaptation estimate.</p>'+
+   '<p><b>Evaluation</b> is the weighted mean of those four. Defaults are 40, 30, 15 and 15. Change them under Evaluation weights in the Players tab.</p>'+
+   '<p>Bands: 72 and above is a priority target, 64 to 71 a strong option, 55 to 63 monitor.</p></div></div>'+
+   '<div class="panel"><h2>What is real and what is not</h2><div class="prose">'+
+   '<p>Every player, club, scout, message and number here is invented. A fixed random seed produces the same database for every viewer. Names are assembled from common first names and surnames, so any match with a real person is a coincidence.</p>'+
+   '<p>The page shows how scouts, analysts and the Director of Football would use one system. It does not prove that the model finds better players. That needs real match data and the validation step in task 3.3.</p>'+
+   '<p>Your shortlist moves, reports, messages and weights are stored in your own browser. Use Reset demo data at the foot of the page to return to the starting state.</p></div></div></div>'+
+  '<div class="panel"><div class="panel-h"><h2>Coverage of the project plan</h2><span>Against the work breakdown structure</span></div><div class="scroll"><table><thead><tr><th>Plan item</th><th>In this proof of concept</th><th>Simplified or left out</th></tr></thead><tbody>'+
+   rows.map(r=>'<tr><td style="font-weight:600">'+r[0]+'</td><td class="wrapc">'+r[1]+'</td><td class="wrapc muted">'+r[2]+'</td></tr>').join('')+
+  '</tbody></table></div><p class="faint" style="font-size:13px">Not covered: video analysis, data-privacy controls, real data sources and multi-user access. These follow in a full build.</p></div>'+
+  '</div>';
+}
+
+/* ---------- interactions ---------- */
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>el.hidden=true,2200); }
+function toggleCompare(id){
+  const i=S.compare.indexOf(id);
+  if(i>=0) S.compare.splice(i,1);
+  else if(S.compare.length>=3){ toast('Comparison holds three players. Remove one first.'); return; }
+  else { S.compare.push(id); toast('Added to comparison'); }
+  save();
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-go],[data-player],[data-act],[data-sort]'); if(!t) return;
+  if(t.dataset.go){ go(t.dataset.go); return; }
+  if(t.dataset.sort){ const k=t.dataset.sort; S.sort = S.sort.k===k?{k,d:-S.sort.d}:{k,d:(k==='name'||k==='pos'||k==='nat'||k==='rank'||k==='age')?1:-1}; renderTable(); return; }
+  if(t.dataset.act){
+    const id=+t.dataset.id, a=t.dataset.act, p=byId(id);
+    if(a==='cmp'){ toggleCompare(id); if(S.view==='players'){renderTable();renderTabs()} else render(); return; }
+    if(a==='pipe-add'){ S.pipeline[id]=0; toast(p.name+' added to the shortlist'); }
+    if(a==='pipe-fwd'&&S.pipeline[id]<5){ S.pipeline[id]++; toast(p.name+' moved to '+STAGES[S.pipeline[id]]); }
+    if(a==='pipe-back'&&S.pipeline[id]>0){ S.pipeline[id]--; toast(p.name+' moved back to '+STAGES[S.pipeline[id]]); }
+    if(a==='pipe-del'){ delete S.pipeline[id]; toast(p.name+' dropped from the pipeline'); }
+    if(a==='w-reset'){ S.weights=Object.assign({},DEFAULT_W); recompute(); save(); vPlayers(); document.getElementById('weights').open=true; return; }
+    if(a==='reset'){ try{localStorage.removeItem(KEY)}catch(x){} S.weights=Object.assign({},DEFAULT_W); S.reports=[]; S.msgs=[]; S.compare=[]; S.scouts=scouts.slice(); recompute(); seedPipeline(); render(); toast('Demo data reset'); return; }
+    save(); render(); return;
+  }
+  if(t.dataset.player){ go('player',t.dataset.player); }
+});
+document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('dot')){ e.preventDefault(); go('player',e.target.dataset.player); } });
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.f){ S.filters[t.dataset.f]=t.value; const o=document.getElementById('fo-'+t.dataset.f); if(o) o.textContent=t.dataset.f==='fee'?fee(+t.value):t.value; renderTable(); }
+  else if(t.dataset.w){ S.weights[t.dataset.w]=+t.value; const tot=Object.values(S.weights).reduce((a,b)=>a+b,0)||1; Object.keys(S.weights).forEach(k=>{const o=document.getElementById('wo-'+k); if(o) o.textContent=Math.round(S.weights[k]/tot*100)+'%'}); recompute(); save(); renderTable(); }
+  else if(t.id==='r-rating'){ document.getElementById('ro-rating').textContent=(+t.value).toFixed(1); }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='cmp-add'&&t.value){ toggleCompare(+t.value); render(); }
+  if(t.id==='ch-sel'){ S.channel=t.value; vNetwork(); }
+});
+document.addEventListener('submit',e=>{
+  e.preventDefault();
+  const f=e.target, val=id=>document.getElementById(id).value.trim();
+  if(f.id==='report-form'){
+    const p=byId(S.pid), rating=+val('r-rating'), rec=val('r-rec');
+    S.reports.push({pid:p.id,scoutId:+val('r-scout'),date:TODAY.getTime()+S.reports.length,fixture:val('r-fix')||'live viewing',rating,rec,notes:val('r-notes')||draftReport(p,rating,0).notes});
+    const before=p.eval; recompute(); save(); vPlayer();
+    toast('Report filed. Evaluation '+before.toFixed(0)+' → '+p.eval.toFixed(0));
+  }
+  if(f.id==='msg-form'){
+    const text=val('m-text'); if(!text){ toast('Write a message first'); return; }
+    S.msgs.push({ch:S.channel,from:val('m-from'),date:TODAY.getTime()+S.msgs.length+1,text}); save(); vNetwork(); toast('Message posted');
+  }
+  if(f.id==='scout-form'){
+    const name=val('s-name'); if(!name){ toast('Enter the scout\'s name'); return; }
+    const id=Math.max.apply(0,S.scouts.map(s=>s.id).concat([199]))+1;
+    S.scouts.push({id,name,region:val('s-reg')}); save(); vNetwork(); toast(name+' added as scout '+id);
+  }
+});
+/* tooltip */
+const tip=document.getElementById('tip');
+function showTip(el,x,y){ tip.textContent=el.dataset.tip; tip.hidden=false; const w=tip.offsetWidth; tip.style.left=clamp(x+12,6,window.innerWidth-w-6)+'px'; tip.style.top=Math.max(6,y-34)+'px'; }
+document.addEventListener('mousemove',e=>{ const el=e.target.closest&&e.target.closest('[data-tip]'); if(el) showTip(el,e.clientX,e.clientY); else tip.hidden=true; });
+document.addEventListener('focusin',e=>{ if(e.target.dataset&&e.target.dataset.tip){ const r=e.target.getBoundingClientRect(); showTip(e.target,r.left,r.top); } });
+document.addEventListener('focusout',()=>{ tip.hidden=true; });
+
+/* ---------- boot ---------- */
+const had = load();
+recompute();
+if(!had||!Object.keys(S.pipeline).length&&!had) seedPipeline();
+SEED_MSGS = seedMsgs();
+function route(){
+  let h=''; try{ h=(location.hash||'').slice(1); }catch(e){}
+  if(/^p-\d+$/.test(h)&&byId(h.slice(2))){ S.view='player'; S.pid=+h.slice(2); }
+  else if(TABS.some(t=>t[0]===h)) S.view=h;
+}
+route();
+render();
+window.addEventListener('hashchange',()=>{ route(); render(); });
+})();
+</script>
+</body>
+</html>
